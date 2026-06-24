@@ -1,96 +1,100 @@
 import pygame
 import sys
 
+from player import Player
+from enemy import Enemy
+from projectile import Projectile
+
 pygame.init()
 
-# ==========================
-# CONFIGURAÇÕES
-# ==========================
+WIDTH = 1000
+HEIGHT = 600
 
-LARGURA = 1000
-ALTURA = 600
-
-tela = pygame.display.set_mode((LARGURA, ALTURA))
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Guitar Guardian")
 
 clock = pygame.time.Clock()
 
-BRANCO = (255, 255, 255)
-PRETO = (20, 20, 20)
-AZUL = (50, 120, 255)
-VERDE = (50, 200, 50)
+WHITE = (255, 255, 255)
+BLACK = (20, 20, 20)
+GREEN = (50, 180, 50)
 
-fonte = pygame.font.SysFont("arial", 32)
-fonte_titulo = pygame.font.SysFont("arial", 60, bold=True)
-
-# ==========================
-# ESTADOS
-# ==========================
+font = pygame.font.SysFont("arial", 30)
+title_font = pygame.font.SysFont("arial", 60, bold=True)
 
 MENU = 0
-JOGANDO = 1
+PLAYING = 1
+WIN = 2
+GAME_OVER = 3
 
-estado = MENU
+state = MENU
 
-# ==========================
-# JOGADOR
-# ==========================
+floor_y = 530
 
-player = pygame.Rect(100, 450, 50, 80)
+player = Player()
 
-velocidade = 6
+enemies = [
+    Enemy(500, 460),
+    Enemy(800, 460)
+]
 
-vel_y = 0
-gravidade = 0.8
-pulando = False
+projectiles = []
 
-chao = 530
+notes_collected = 0
+target_notes = 10
 
-# ==========================
-# LOOP PRINCIPAL
-# ==========================
+damage_cooldown = 0
 
-while True:
+running = True
+
+while running:
 
     clock.tick(60)
 
-    for evento in pygame.event.get():
+    for event in pygame.event.get():
 
-        if evento.type == pygame.QUIT:
-            pygame.quit()
-            sys.exit()
+        if event.type == pygame.QUIT:
+            running = False
 
-        if estado == MENU:
+        if state == MENU:
 
-            if evento.type == pygame.KEYDOWN:
-                if evento.key == pygame.K_RETURN:
-                    estado = JOGANDO
+            if event.type == pygame.KEYDOWN:
 
-        elif estado == JOGANDO:
+                if event.key == pygame.K_RETURN:
+                    state = PLAYING
 
-            if evento.type == pygame.KEYDOWN:
+        elif state == PLAYING:
 
-                if evento.key == pygame.K_SPACE and not pulando:
-                    vel_y = -16
-                    pulando = True
+            if event.type == pygame.KEYDOWN:
 
-    # ==========================
+                if event.key == pygame.K_SPACE:
+                    player.jump()
+
+                if event.key == pygame.K_LCTRL:
+
+                    projectile = Projectile(
+                        player.rect.centerx,
+                        player.rect.centery,
+                        player.direction
+                    )
+
+                    projectiles.append(projectile)
+
     # MENU
-    # ==========================
 
-    if estado == MENU:
+    if state == MENU:
 
-        tela.fill((15, 15, 40))
+        screen.fill((20, 20, 60))
 
-        titulo = fonte_titulo.render(
+        title = title_font.render(
             "GUITAR GUARDIAN",
             True,
-            BRANCO
+            WHITE
         )
 
-        tela.blit(titulo, (250, 80))
+        screen.blit(title, (220, 80))
 
-        controles = [
+        controls = [
             "CONTROLES",
             "",
             "A - ESQUERDA",
@@ -101,57 +105,131 @@ while True:
             "ENTER - INICIAR"
         ]
 
-        y = 200
+        y = 220
 
-        for texto in controles:
-            linha = fonte.render(texto, True, BRANCO)
-            tela.blit(linha, (350, y))
-            y += 40
+        for line in controls:
 
-    # ==========================
-    # JOGO
-    # ==========================
+            text = font.render(line, True, WHITE)
 
-    elif estado == JOGANDO:
+            screen.blit(text, (340, y))
 
-        teclas = pygame.key.get_pressed()
+            y += 35
 
-        if teclas[pygame.K_a]:
-            player.x -= velocidade
+    elif state == PLAYING:
 
-        if teclas[pygame.K_d]:
-            player.x += velocidade
+        keys = pygame.key.get_pressed()
 
-        # gravidade
-        vel_y += gravidade
-        player.y += vel_y
+        player.move(keys)
+        player.update(floor_y)
 
-        # chão
-        if player.bottom >= chao:
-            player.bottom = chao
-            vel_y = 0
-            pulando = False
-
-        tela.fill((120, 200, 255))
+        screen.fill((120, 200, 255))
 
         pygame.draw.rect(
-            tela,
-            VERDE,
-            (0, chao, LARGURA, ALTURA - chao)
+            screen,
+            GREEN,
+            (0, floor_y, WIDTH, HEIGHT - floor_y)
         )
 
-        pygame.draw.rect(
-            tela,
-            AZUL,
-            player
-        )
+        # inimigos
 
-        info = fonte.render(
-            "Greg Guitar Guardian",
+        for enemy in enemies:
+            enemy.update()
+
+        # projéteis
+
+        for projectile in projectiles[:]:
+
+            projectile.update()
+
+            if projectile.off_screen():
+                projectiles.remove(projectile)
+                continue
+
+            for enemy in enemies[:]:
+
+                if projectile.rect.colliderect(enemy.rect):
+
+                    if projectile in projectiles:
+                        projectiles.remove(projectile)
+
+                    if enemy in enemies:
+                        enemies.remove(enemy)
+
+                    notes_collected += 1
+                    break
+
+        # dano
+
+        if damage_cooldown > 0:
+            damage_cooldown -= 1
+
+        for enemy in enemies:
+
+            if player.rect.colliderect(enemy.rect):
+
+                if damage_cooldown == 0:
+
+                    player.life -= 20
+                    damage_cooldown = 60
+
+        # vitória
+
+        if notes_collected >= target_notes:
+            state = WIN
+
+        # derrota
+
+        if player.life <= 0:
+            state = GAME_OVER
+
+        player.draw(screen)
+
+        for enemy in enemies:
+            enemy.draw(screen)
+
+        for projectile in projectiles:
+            projectile.draw(screen)
+
+        life_text = font.render(
+            f"Vida: {player.life}",
             True,
-            PRETO
+            BLACK
         )
 
-        tela.blit(info, (20, 20))
+        score_text = font.render(
+            f"Notas da Harmonia: {notes_collected}/{target_notes}",
+            True,
+            BLACK
+        )
+
+        screen.blit(life_text, (20, 20))
+        screen.blit(score_text, (20, 60))
+
+    elif state == WIN:
+
+        screen.fill((20, 120, 20))
+
+        text = title_font.render(
+            "VOCE VENCEU!",
+            True,
+            WHITE
+        )
+
+        screen.blit(text, (250, 250))
+
+    elif state == GAME_OVER:
+
+        screen.fill((120, 20, 20))
+
+        text = title_font.render(
+            "GAME OVER",
+            True,
+            WHITE
+        )
+
+        screen.blit(text, (280, 250))
 
     pygame.display.flip()
+
+pygame.quit()
+sys.exit()
