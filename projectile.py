@@ -1,9 +1,10 @@
 import pygame
-
+from assets import Assets
 
 class Projectile:
 
     def __init__(self, x, y, direction):
+        self.image = Assets.image("note_projectile.png")
 
         self.rect = pygame.Rect(x, y, 20, 10)
 
@@ -14,8 +15,7 @@ class Projectile:
         self.rect.x += self.speed
 
     def draw(self, screen):
-
-        pygame.draw.rect(screen, (255, 255, 0), self.rect)
+        screen.blit(self.image, self.rect)
 
     def off_screen(self):
 

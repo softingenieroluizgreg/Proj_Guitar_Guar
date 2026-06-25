@@ -1,10 +1,17 @@
 import pygame
+from assets import Assets
 
 
 class Player:
 
     def __init__(self):
-        self.rect = pygame.Rect(100, 450, 50, 80)
+
+        self.image = Assets.image("hero_idle.png")
+        self.image = pygame.transform.scale(self.image, (96, 96))
+
+        self.rect = self.image.get_rect()
+        self.rect.x = 100
+        self.rect.y = 450
 
         self.speed = 6
 
@@ -15,6 +22,7 @@ class Player:
 
         self.life = 100
 
+        # 1 = direita / -1 = esquerda
         self.direction = 1
 
     def move(self, keys):
@@ -45,4 +53,13 @@ class Player:
 
     def draw(self, screen):
 
-        pygame.draw.rect(screen, (50, 120, 255), self.rect)
+        if self.direction == -1:
+            sprite = pygame.transform.flip(
+                self.image,
+                True,
+                False
+            )
+        else:
+            sprite = self.image
+
+        screen.blit(sprite, self.rect)

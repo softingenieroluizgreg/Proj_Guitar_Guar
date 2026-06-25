@@ -1,9 +1,10 @@
 import pygame
-
+from assets import Assets
 
 class Enemy:
 
     def __init__(self, x, y):
+        self.image = Assets.image("noise_monster.png")
 
         self.rect = pygame.Rect(x, y, 50, 70)
 
@@ -23,4 +24,4 @@ class Enemy:
 
     def draw(self, screen):
 
-        pygame.draw.rect(screen, (220, 50, 50), self.rect)
+        screen.blit(self.image, self.rect)
