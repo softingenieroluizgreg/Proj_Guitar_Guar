@@ -38,10 +38,7 @@ shoot_sound = Assets.sound("guitar_shot.wav")
 hit_sound = Assets.sound("hit.wav")
 enemy_sound = Assets.sound("enemy_defeated.wav")
 
-pygame.mixer.music.load(
-    Assets.music("stage_theme.mp3")
-)
-
+pygame.mixer.music.load(Assets.music("stage_theme.mp3"))
 pygame.mixer.music.set_volume(0.5)
 pygame.mixer.music.play(-1)
 
@@ -57,16 +54,43 @@ GAME_OVER = 3
 state = MENU
 
 # ==================================================
-# JOGADOR
+# CONFIG JOGO
 # ==================================================
 
 floor_y = 530
 
-player = Player()
+restart_button = pygame.Rect(350, 300, 300, 60)
+exit_button = pygame.Rect(350, 390, 300, 60)
+
+
+def reset_game():
+    global player
+    global enemies
+    global projectiles
+    global score
+    global damage_cooldown
+    global state
+
+    player = Player()
+
+    enemies = [
+        Enemy(500, 460),
+        Enemy(750, 460),
+        Enemy(900, 460)
+    ]
+
+    projectiles = []
+    score = 0
+    damage_cooldown = 0
+
+    state = PLAYING
+
 
 # ==================================================
-# INIMIGOS
+# OBJETOS INICIAIS
 # ==================================================
+
+player = Player()
 
 enemies = [
     Enemy(500, 460),
@@ -74,15 +98,7 @@ enemies = [
     Enemy(900, 460)
 ]
 
-# ==================================================
-# PROJÉTEIS
-# ==================================================
-
 projectiles = []
-
-# ==================================================
-# JOGO
-# ==================================================
 
 score = 0
 target_score = 10
@@ -123,6 +139,7 @@ while running:
                     player.jump()
 
                 if event.key == pygame.K_LCTRL:
+
                     projectile = Projectile(
                         player.rect.centerx,
                         player.rect.centery,
@@ -130,8 +147,31 @@ while running:
                     )
 
                     projectiles.append(projectile)
-
                     shoot_sound.play()
+
+        elif state == GAME_OVER:
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+
+                mouse_pos = pygame.mouse.get_pos()
+
+                if restart_button.collidepoint(mouse_pos):
+                    reset_game()
+
+                if exit_button.collidepoint(mouse_pos):
+                    running = False
+
+        elif state == WIN:
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+
+                mouse_pos = pygame.mouse.get_pos()
+
+                if restart_button.collidepoint(mouse_pos):
+                    reset_game()
+
+                if exit_button.collidepoint(mouse_pos):
+                    running = False
 
     # ==============================================
     # MENU
@@ -147,7 +187,7 @@ while running:
             WHITE
         )
 
-        screen.blit(title, (220, 80))
+        screen.blit(title, (200, 80))
 
         controls = [
             "CONTROLES",
@@ -155,7 +195,7 @@ while running:
             "A - MOVER PARA ESQUERDA",
             "D - MOVER PARA DIREITA",
             "SPACE - PULAR",
-            "CTRL - TOCAR GUITARRA",
+            "CTRL - ATACAR COM A GUITARRA",
             "",
             "ENTER - INICIAR"
         ]
@@ -163,18 +203,17 @@ while running:
         y = 220
 
         for line in controls:
-            text = font.render(line, True, WHITE)
 
-            screen.blit(text, (280, y))
+            text = font.render(line, True, WHITE)
+            screen.blit(text, (250, y))
 
             y += 35
 
     # ==============================================
-    # JOGO
+    # PLAYING
     # ==============================================
 
     elif state == PLAYING:
-
 
         keys = pygame.key.get_pressed()
 
@@ -188,20 +227,12 @@ while running:
             GREEN,
             (0, floor_y, WIDTH, HEIGHT - floor_y)
         )
-        player.draw(screen)
-        
 
-        # ------------------------------------------
         # Atualiza inimigos
-        # ------------------------------------------
-
         for enemy in enemies:
             enemy.update()
 
-        # ------------------------------------------
         # Atualiza projéteis
-        # ------------------------------------------
-
         for projectile in projectiles[:]:
 
             projectile.update()
@@ -225,10 +256,7 @@ while running:
                     score += 1
                     break
 
-        # ------------------------------------------
         # Dano ao jogador
-        # ------------------------------------------
-
         if damage_cooldown > 0:
             damage_cooldown -= 1
 
@@ -237,53 +265,30 @@ while running:
             if player.rect.colliderect(enemy.rect):
 
                 if damage_cooldown == 0:
-                    player.life -= 20
 
+                    player.life -= 20
                     hit_sound.play()
 
                     damage_cooldown = 60
 
-        # ------------------------------------------
         # Vitória
-        # ------------------------------------------
-
         if score >= target_score:
             state = WIN
 
-        # ------------------------------------------
         # Derrota
-        # ------------------------------------------
-
         if player.life <= 0:
             state = GAME_OVER
 
-        # ------------------------------------------
-        # Desenha jogador
-
-        # ------------------------------------------
-
-
-
+        # Desenho
         player.draw(screen)
-
-        # ------------------------------------------
-        # Desenha inimigos
-        # ------------------------------------------
 
         for enemy in enemies:
             enemy.draw(screen)
 
-        # ------------------------------------------
-        # Desenha projéteis
-        # ------------------------------------------
-
         for projectile in projectiles:
             projectile.draw(screen)
 
-        # ------------------------------------------
         # HUD
-        # ------------------------------------------
-
         life_text = font.render(
             f"Vida: {player.life}",
             True,
@@ -299,8 +304,6 @@ while running:
         screen.blit(life_text, (20, 20))
         screen.blit(score_text, (20, 55))
 
-        # Barra de vida
-
         pygame.draw.rect(
             screen,
             (180, 0, 0),
@@ -310,11 +313,11 @@ while running:
         pygame.draw.rect(
             screen,
             (0, 200, 0),
-            (20, 90, player.life * 2, 20)
+            (20, 90, max(0, player.life * 2), 20)
         )
 
     # ==============================================
-    # VITÓRIA
+    # WIN
     # ==============================================
 
     elif state == WIN:
@@ -327,7 +330,27 @@ while running:
             WHITE
         )
 
-        screen.blit(text, (230, 250))
+        screen.blit(text, (220, 180))
+
+        pygame.draw.rect(screen, (50, 180, 50), restart_button)
+
+        restart_text = font.render(
+            "JOGAR NOVAMENTE",
+            True,
+            WHITE
+        )
+
+        screen.blit(restart_text, (390, 318))
+
+        pygame.draw.rect(screen, (180, 50, 50), exit_button)
+
+        exit_text = font.render(
+            "SAIR",
+            True,
+            WHITE
+        )
+
+        screen.blit(exit_text, (470, 408))
 
     # ==============================================
     # GAME OVER
@@ -343,7 +366,27 @@ while running:
             WHITE
         )
 
-        screen.blit(text, (260, 250))
+        screen.blit(text, (280, 180))
+
+        pygame.draw.rect(screen, (50, 180, 50), restart_button)
+
+        restart_text = font.render(
+            "REINICIAR",
+            True,
+            WHITE
+        )
+
+        screen.blit(restart_text, (430, 318))
+
+        pygame.draw.rect(screen, (180, 50, 50), exit_button)
+
+        exit_text = font.render(
+            "SAIR",
+            True,
+            WHITE
+        )
+
+        screen.blit(exit_text, (470, 408))
 
     pygame.display.flip()
 
