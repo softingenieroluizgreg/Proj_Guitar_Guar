@@ -1,5 +1,6 @@
 import pygame
 import sys
+import random
 
 from assets import Assets
 from player import Player
@@ -69,6 +70,7 @@ def reset_game():
     global projectiles
     global score
     global damage_cooldown
+    global spawn_timer
     global state
 
     player = Player()
@@ -80,9 +82,11 @@ def reset_game():
     ]
 
     projectiles = []
-    score = 0
-    damage_cooldown = 0
 
+    score = 0
+
+    damage_cooldown = 0
+    spawn_timer = 0
     state = PLAYING
 
 
@@ -104,6 +108,14 @@ score = 0
 target_score = 10
 
 damage_cooldown = 0
+
+
+spawn_timer = 0
+spawn_delay = 120
+max_enemies = 6
+
+
+#def reset_game():
 
 # ==================================================
 # LOOP PRINCIPAL
@@ -219,8 +231,26 @@ while running:
 
         player.move(keys)
         player.update(floor_y)
+        # Spawn de inimigos
+        # -----------------------------
+        spawn_timer += 1
+
+        spawn_delay = max(40, 120 - score * 5)
+
+        if spawn_timer >= spawn_delay:
+
+            spawn_timer = 0
+
+            if len(enemies) < max_enemies:
+                enemies.append(
+                    Enemy(
+                        random.randint(1000, 1300),
+                        460
+                    )
+                )
 
         screen.blit(background, (0, 0))
+
 
         pygame.draw.rect(
             screen,
